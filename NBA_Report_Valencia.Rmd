@@ -1,0 +1,190 @@
+---
+title: "RAPTOR Report"
+author: "Juan Valencia"
+date: "12/6/2020"
+output:
+html document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## **Introduction**
+
+- The aim of our project was to analyze and dissect the information from the RAPTOR dataset to seek out patterns in our data and derive questions from the data. The primary goal of our project was to see how NBA players and teams have performed historically and how they are performed now to seek out the differences between eras in the history of basketball and the players from those eras. In the RAPTOR dataset, you have to be aware of the certain terms that the Dataset comes with and with knowing what does represent give us a better understanding how people player fits each time and how they have been performing through regular and the post-season.
+
+- Now the question arises what RAPTOR Is exactly? Before we answer that question, ask yourself if you have ever watched a game of basketball and wondered what the announcers meant by two-way player, rim protector, or the front court. floor general. These terms can be analyzed using RAPTOR. RAPTOR, stands for Robust Algorithm (using) Player Tracking (and) On/Off Ratings, is a statistic that measures box, on/off, and overall RAPTOR and we use RAPTOR to compare both players and teams from datasets that date back from 1976 to 2020. RAPTOR in theory would favor modern NBA players, since basketball has become more analytical and based off collections of vast data.  P Players no tend to take shots they are more likely to make and defend players they have a better suited to defend. Also, teams are constructed more around team chemistry, which can be analyzed with RAPTOR. The box metric measures the amount of points gained and allowed per 100 possessions. The on/off metric is similar to box, but it also takes into effect the player's teammates while he is on the court and the player's teammates while the player is not on the court. Overall RAPTOR(raptor_total) is a combination of 85% of box and 21% of on/off. After all of this you may wonder, "What if I replaced a player with an average player?" This is what WAR measures. WAR, or wins above replacement, measures the wins a player is worth to their team. 
+For reference, the average playing time for players in a normal game is:
+
+**Starters** : 30-38 minutes
+  
+**Bench** : 15-25 minutes
+  
+**Bench Warmers** : 0-10 minutes  
+    
+
+## **Packages Required**
+
+## *For this project we have only loaded in two packages essential to give us better insight.*
+
+```{r}
+library(tidyverse) # Load tidyverse
+library(ggplot2) # Load ggplot to make plots
+```
+
+## **Data Preparation**
+
+```{r}
+# Read in RAPTOR by 2020 player data
+players_2020 <- read.csv("latest_RAPTOR_by_player.csv")
+# Read in RAPTOR by 2020 team data
+teams_2020 <- read.csv("latest_RAPTOR_by_team.csv")
+# Read in RAPTOR by historical team data
+players_hist <- read.csv("historical_RAPTOR_by_team.csv")
+```
+
+## **Link to source**
+This data was obtained from https://github.com/fivethirtyeight/data/tree/master/nba-raptor .
+
+
+## **Exploratory Data Analysis**
+
+### **Part 1: The Players**
+
+- The first data we will use is the "latest_RAPTOR_by_player.csv".
+```{r}
+
+players_2020 <- subset(players_2020, select = -c(predator_offense,predator_defense,predator_total,pace_impact))
+
+glimpse(players_2020)
+```
+- Insight :  This is data for the 2019-2020 season.The season was suspended early due to COVID, so teams we only able to play 63-67 games, as opposed 82 games in a normal season.
+
+
+
+
+***Best offensive player by RAPTOR***
+```{r}
+players_2020 %>% select(player_name,mp,raptor_offense) %>% arrange(desc(raptor_offense)) %>% head(1)#We want to look at the player with the highest offensive RAPTOR rating.
+```
+
+- Insight: This observation tells us the highest rated offense player is Jamal Crawford, now to anyone else who's not a not a fan of basketball, you may be thinking that Jamal Crawford is the best basketball player in the NBA since he by far has the best score. The problem with this is that he has only played 6 minutes and that isn't enough to properly assess his impact on games . In order to fix this we need to adjust the minutes played to truly get the best players.
+
+***Best offensive player by RAPTOR adjusted with minutes played***
+```{r}
+best.players2020 <- players_2020 %>% filter(mp >= 1890) # 1,890 minutes is the average play time of a core player at 30 minutes per game in an 63 game season
+
+best.players2020 %>% select(player_name,raptor_offense) %>% arrange(desc(raptor_offense)) %>% head(1)
+```
+- Insight : Now we can clearly see that James Harden is the best offensive player when the minutes are adjusted. For James Harden to also be considered a two-way player he would need to have a positive impact on defense.
+
+
+
+
+***Best player by RAPTOR with the Highest Raptor On/Off ***
+
+Since on/off measures the effect the player's teammates have while a player is on the court and the player's teammates while the player is not on the court, we can use on/off to show which player makes his teammates better.
+
+```{r}
+best.players2020 %>% select(player_name, raptor_onoff_total) %>% arrange(desc(raptor_onoff_total)) %>% head(10)
+
+```
+ - Insights: From this, we can see LeBron James has the most positive impact to his teammates. He is what is considered a floor general, since he is able to impact his teammates in a positive way.
+
+
+***What is difference in WAR between the regular season and the playoffs?***
+```{r}
+best.players2020 %>% arrange(desc(war_total)) %>% filter(mp > 1890) %>% head(30) %>% ggplot(aes(x = war_playoffs, y = war_reg_season)) + geom_smooth() + geom_point() + ggtitle("WAR(Wins above replacement) in Playoffs vs Regular Season")
+
+```
+
+- *Insight*: We could see the vast disparity of the top 30 players with their WAR during the regular season and the playoff
+
+### **Part 2: Player Impact on team**
+
+```{r}
+teams_2020 <- subset(teams_2020, select = -c(predator_offense,predator_defense,predator_total,pace_impact))
+
+glimpse(teams_2020)
+```
+***We can take the teams 2020 data to look at the performances of the top 10 players in the playoffs?***
+```{r}
+PO_teams <- teams_2020 %>% filter(season_type =="PO") %>% filter(mp >=1)
+PO_teams %>% head(10)
+
+```
+
+***Who is the most valuable player for their team in the 2020 playoffs?***
+```{r}
+PO_teams %>% select(player_name,team,season_type,mp,raptor_onoff_total) %>% filter(mp >= 140) %>% group_by(team) %>% slice(which.max(raptor_onoff_total)) 
+
+```
+- Insight : 140 minutes is the minimum number of minutes to have the best player of the 16 playoff team and the data tells us the player with highest raptor on/off today who had the most impact in those minutes played is Marcus smart.
+
+
+### **Part 3: Historical Data Analysis**
+
+What if you wanted to compare how valuable Michael Jordan was to the Bulls?
+```{r}
+#removed unneeded data
+players_hist <- subset(players_hist, select = -c(predator_offense,predator_defense,predator_total,pace_impact))
+glimpse(players_hist)
+ 
+```
+- *Insight*: This data shows the RAPTOR data from 1976-2019. This data is less accurate since the game changed over the years. For example, players today are more efficient at shooting three pointers, which puts more value in players who play the guard position. In the 70s,80s, and 90s, two-pointers were more valuable, so centers were more valuable. This data does not show the position of the players, but we can still show value irregardless of the era they played in. It is also limited to only show RAPTOR and WAR.
+
+***Comparing Micheal Jordan to his teammates during the regular season and playoff during his best season 1995-1996***
+```{r fig.height=6, fig.width=9}
+# filter data for only the 1995-1996 Chicago Bulls season
+ggplot(data = players_hist %>%  filter(team == "CHI",season == 1996),aes(x = raptor_total,y = player_name, color = season_type)) + geom_point() + facet_wrap(~season_type) + ggtitle("1995-1996 Chicago Bulls Season")
+```
+***Comparing Micheal Jordan to his No.2 guy Scottie Pippen***
+
+```{r}
+
+# filter data for only Michael Jordan and Scottie Pippen
+MJ_v_SP <- players_hist %>%  filter(team == "CHI",season == 1996) %>% arrange(desc(raptor_total)) %>% head(4)
+MJ_v_SP %>% arrange(season_type)
+```
+- Insight: From the first plot we can see spot that in regular season, Jordan lead his teammates as the most effective player in the team but in the playoffs he got pipped by Scottie pippen.
+
+
+### **Part 4:Summing Team History**
+
+***We will know looking to the sum_Raptor and the sum_mp for each team to find out which team has the best performance in the history of the NBA***. 
+```{r}
+players_hist %>% group_by(team) %>% summarise(sum_raptor = sum(raptor_total),sum_mp = sum(mp)) %>% arrange(desc(sum_mp)) %>% head(30)
+
+```
+- **Insight** : What's this? Here we can see that the Lakers, who have won 11 championships during this time, have a negative overall RAPTOR. How can this be?
+
+To answer the latter question, we decided plot the entire history of the Lakers to give ourselves a better understanding of why the value is coming out to be negative?
+```{r}
+# created a RAPTOR data frame that is the sum of RAPTOR for each season
+team_raptor <- players_hist %>% group_by(season,team) %>% summarise(sum_raptor = sum(raptor_total),sum_mp = sum(mp)) %>% arrange(desc(team))
+
+ggplot(data = team_raptor %>% group_by(season) %>% filter(team == "LAL"), aes(x = season, y = sum_raptor)) + geom_line() + facet_wrap(~team) + geom_hline(yintercept = 0) + ggtitle("Lakers' Total RAPTOR History")
+```
+
+- **Insight** : What this tells us is that even if Lakers have won all those championships, their bad seasons have undoubtedly dragged their sum_raptor down.
+
+What if you wanted to compare the players from 2020 to players from a different season? We can now use full_join to combine both team data frames to include the seasons from 1976-2020 to compare the players of today with players of the past.
+```{r}
+full_team_data <- full_join(players_hist, teams_2020) # full_join combines the data frames
+full_team_data <- full_team_data %>% select(player_name,player_id,season,season_type,team,poss,mp,raptor_offense,raptor_defense,raptor_total,war_reg_season,war_reg_season,war_total) # selecting only data with values
+```
+Now we can show the offensive trend over the history of the NBA. 
+```{r}
+all_team_raptor <- players_hist %>% group_by(season,season_type) %>% summarise(sum_rap_off = sum(raptor_offense)) %>% arrange(desc(season))
+# 
+ggplot(data = all_team_raptor, aes(x = season, y = sum_rap_off)) + geom_smooth() + geom_point() + facet_wrap(~season_type) + ggtitle("Offense History")
+```
+
+- **Insight**:  While the offense during the regular season looks to have gotten worse over the years, the playoffs have stayed consistent throughout. This information can be used to by teams to choose to rest players in the regular season and have them ready to go in the playoffs, since regular season performance has little to no impact on the a team's offense.
+
+## **Summary**
+- This data has been changing the way basketball is analyzed. Data that can compare a player to a player from the past can mean the difference between drafting a future Hall of Famer or a potential bust. A General Manager for a team can use this data to evaluate potential or even team chemistry. 
+- We saw that a player who looks great offensively can actually be misleading, as we saw with Jamal Crawford.
+- We can also use this data to help determine NBA MVP(most valuable player), MIP(most improved player), DPOY(defensive player of the year), and even COY(coach of the year). The NBA awards are being scrutinized more every year with analytics and could one day be determined solely on analytics. 
+- The NBA teams analyze their players to put them in the best situations to perform, which could be team chemistry, helping a player work to take certain shots, or even when to rest players to prepare for the playoffs. RAPTOR is able to do all that and more, and will also allow the NBA to become a more competitive league.
